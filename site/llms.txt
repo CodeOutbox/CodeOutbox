@@ -51,7 +51,7 @@ Send with the CLI or API: `co send campaigns/launch.md --live`.
 
 ## GitHub Action
 
-`uses: Cellcote/CodeOutbox/action@main` with `api-token`. On `pull_request` it comments
+`uses: CodeOutbox/CodeOutbox/action@main` with `api-token`. On `pull_request` it comments
 with each changed campaign's subject, list, recipient count, warnings and a rendered
 preview link; on `push` to the default branch it sends them (drafts skipped).
 

@@ -152,7 +152,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Cellcote/CodeOutbox/action@main
+      - uses: CodeOutbox/CodeOutbox/action@main
         with:
           api-token: ${{ secrets.CODEOUTBOX_TOKEN }}</code></pre>
 <p>Create the token with <code>co token create --name github</code> and save it as the <code>CODEOUTBOX_TOKEN</code> repository secret. Inputs: <code>paths</code> (default <code>campaigns/**/*.md</code>), <code>mode</code> (<code>auto</code> | <code>preview</code> | <code>send</code>), <code>url</code>.</p>
@@ -232,6 +232,6 @@ claude mcp add codeoutbox -e CO_TOKEN=co_live_… -- npx -y codeoutbox mcp</code
 </main>
 </div>
 
-<footer><div class="wrap">© 2026 CodeOutbox · <a href="/">Home</a> · <a href="/docs.html">Docs</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="https://github.com/Cellcote/CodeOutbox">GitHub</a></div></footer>
+<footer><div class="wrap">© 2026 CodeOutbox · <a href="/">Home</a> · <a href="/docs.html">Docs</a> · <a href="/privacy.html">Privacy</a> · <a href="/terms.html">Terms</a> · <a href="https://github.com/CodeOutbox/CodeOutbox">GitHub</a></div></footer>
 </body>
 </html>

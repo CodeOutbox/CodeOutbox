@@ -30,7 +30,7 @@
   "homepage": "https://codeoutbox.com",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Cellcote/CodeOutbox.git",
+    "url": "git+https://github.com/CodeOutbox/CodeOutbox.git",
     "directory": "packages/codeoutbox"
   },
   "license": "MIT"

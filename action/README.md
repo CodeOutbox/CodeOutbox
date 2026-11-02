@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: Cellcote/CodeOutbox/action@main
+      - uses: CodeOutbox/CodeOutbox/action@main
         with:
           api-token: ${{ secrets.CODEOUTBOX_TOKEN }}
 ```
