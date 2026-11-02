@@ -25,6 +25,7 @@ const has = (name) => argv.includes(`--${name}`);
 const group = flag("group", "newsletter");
 const base = flag("base", process.env.CO_URL || "https://app.codeoutbox.com").replace(/\/$/, "");
 const PLACEHOLDER = "YOUR_FORM_ID";
+const CLIENT = "codeoutbox-cli/0.2.0"; // lets the server count CLI use (no personal data)
 const FRAMEWORKS = ["html", "react", "vue", "svelte", "astro"];
 
 // Color only on a real terminal (and never with NO_COLOR).
@@ -130,9 +131,12 @@ const OK_CONFIRMED = "You're subscribed 🎉";
 const OK_PENDING = "Check your inbox to confirm ✉️";
 
 // The submit logic every template shares: POST FormData, read { ok, status, error }.
-const submitJs = (action, indent = "") =>
-  `const res = await fetch('${action}', {
-  method: 'POST', headers: { Accept: 'application/json' }, body: new FormData(form),
+// `_e` is the time since the form loaded; the server uses it to tell people from bots.
+const submitJs = (action, indent = "", since = "loadedAt") =>
+  `const body = new FormData(form);
+body.append('_e', String(Date.now() - ${since}));
+const res = await fetch('${action}', {
+  method: 'POST', headers: { Accept: 'application/json' }, body,
 });
 const data = await res.json().catch(() => ({}));`
     .split("\n")
@@ -155,6 +159,7 @@ function htmlForm(action, cls = PLAIN, withStyle = true) {
 </form>
 ${withStyle ? `\n<style>\n${css()}\n</style>\n` : ""}
 <script>
+  const loadedAt = Date.now();
   document.querySelectorAll('form.co-enhance').forEach((form) => {
     const msg = form.querySelector('[role=status]');
     const btn = form.querySelector('button');
@@ -184,11 +189,12 @@ function reactForm(action, { tailwind, ts, next }) {
   const cn = (k) => (tailwind ? `className="${TW[k]}"` : `className={s.${k}}`);
   const T = (t) => (ts ? t : "");
   return `${next ? "'use client';\n\n" : ""}// CodeOutbox email capture — accessible, dark-mode aware, no backend needed.
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 ${tailwind ? "" : "import s from './CodeOutboxForm.module.css';\n"}
 ${ts ? "type Status = 'idle' | 'loading' | 'done' | 'error';\n\n" : ""}export function CodeOutboxForm() {
   const [status, setStatus] = useState${T("<Status>")}('idle');
   const [message, setMessage] = useState('');
+  const loadedAt = useRef(Date.now());
 
   async function onSubmit(e${T(": React.FormEvent<HTMLFormElement>")}) {
     e.preventDefault();
@@ -196,7 +202,7 @@ ${ts ? "type Status = 'idle' | 'loading' | 'done' | 'error';\n\n" : ""}export fu
     setStatus('loading');
     setMessage('');
     try {
-${submitJs(action, "      ")}
+${submitJs(action, "      ", "loadedAt.current")}
       if (res.ok && data.ok) {
         form.reset();
         setStatus('done');
@@ -236,6 +242,7 @@ import { ref } from 'vue';
 
 const status = ref${ts ? "<'idle' | 'loading' | 'done' | 'error'>" : ""}('idle');
 const message = ref('');
+const loadedAt = Date.now();
 
 async function onSubmit(e${ts ? ": Event" : ""}) {
   const form = e.currentTarget${ts ? " as HTMLFormElement" : ""};
@@ -280,6 +287,7 @@ function svelteForm(action, { tailwind, ts }) {
 <script${ts ? ' lang="ts"' : ""}>
   let status${ts ? ": 'idle' | 'loading' | 'done' | 'error'" : ""} = 'idle';
   let message = '';
+  const loadedAt = Date.now();
 
   async function onSubmit(e${ts ? ": SubmitEvent" : ""}) {
     const form = e.currentTarget${ts ? " as HTMLFormElement" : ""};
@@ -357,7 +365,7 @@ async function resolveFormId() {
     try {
       const res = await fetch(`${base}/v1/provisional`, {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-co-client": CLIENT },
         body: JSON.stringify({ slug: group, email: flag("email") }),
       });
       const json = await res.json().catch(() => ({}));
@@ -370,7 +378,7 @@ async function resolveFormId() {
   }
   const res = await fetch(`${base}/v1/groups`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    headers: { "content-type": "application/json", "x-co-client": CLIENT, authorization: `Bearer ${token}` },
     body: JSON.stringify({ slug: group }),
   });
   const json = await res.json().catch(() => ({}));
@@ -475,7 +483,7 @@ async function doImport() {
   const csv = await readFile(file, "utf8");
   const res = await fetch(`${base}/v1/groups/${encodeURIComponent(slug)}/subscribers/import-csv`, {
     method: "POST",
-    headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
+    headers: { "content-type": "application/json", "x-co-client": CLIENT, authorization: `Bearer ${token}` },
     body: JSON.stringify({ csv, confirmed }),
   });
   const r = await res.json().catch(() => ({ ok: false, error: `HTTP ${res.status}` }));

@@ -8,6 +8,7 @@ import type { Context } from "hono";
 import { query, queryOne } from "../db";
 import { getAccountId } from "../auth";
 import { config } from "../config";
+import { track, clientOf } from "../metrics";
 
 const SLUG_RE = /^[a-z0-9][a-z0-9-]*$/;
 
@@ -59,6 +60,10 @@ export async function createGroup(c: Context) {
   // Slugs are namespaced per account, so two tenants can both have "newsletter".
   // The public form endpoint uses an unguessable public_id, not the slug.
   const publicId = randomBytes(6).toString("base64url");
+  const isNew = !(await queryOne(
+    `SELECT 1 FROM groups WHERE owner_account_id = $1 AND slug = $2`,
+    [accountId, slug],
+  ));
   const row = await queryOne<{ slug: string; public_id: string }>(
     `INSERT INTO groups (slug, name, double_opt_in, redirect, owner_account_id, public_id, archive_public)
      VALUES ($1, $2, $3, $4, $5, $6, COALESCE($7, FALSE))
@@ -71,6 +76,7 @@ export async function createGroup(c: Context) {
     [slug, name, doubleOptIn, redirect, accountId, publicId, archive],
   );
   if (!row) return c.json({ ok: false, error: "create failed" }, 500);
+  if (isNew) track("list_created", accountId, { client: clientOf(c) });
   return c.json({
     ok: true,
     slug: row.slug,

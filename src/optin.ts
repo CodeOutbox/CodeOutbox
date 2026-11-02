@@ -1,7 +1,7 @@
 // Double-opt-in email for one subscriber, in the list's name and brand. Used by the
 // form endpoint, the subscriber API and the confirmation reminder.
 
-import { queryOne } from "./db";
+import { query, queryOne } from "./db";
 import { config } from "./config";
 import { signToken } from "./tokens";
 import { resolveBrand } from "./brand";
@@ -25,6 +25,7 @@ export async function sendOptIn(subscriberId: number, reminder = false): Promise
   const brand = owner ? await resolveBrand(owner) : null;
   const name = row.list_name || brand?.name || row.slug;
   const token = await signToken(subscriberId, "confirm");
+  await query(`UPDATE subscribers SET optin_sent_at = now() WHERE id = $1`, [subscriberId]);
   await sendListEmail(
     owner,
     name,

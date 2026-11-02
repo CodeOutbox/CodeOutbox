@@ -3,17 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-RC7J6DP50Q"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  // Consent Mode v2: deny analytics until the visitor accepts.
-  gtag('consent', 'default', {ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',analytics_storage:'denied'});
-  gtag('js', new Date());
-  gtag('config', 'G-RC7J6DP50Q');
-  try { if (localStorage.getItem('co_consent') === 'granted') gtag('consent','update',{analytics_storage:'granted'}); } catch(e){}
-</script>
+<!-- Google Analytics + cookie consent (shared with app.codeoutbox.com) -->
+<script src="/ga.js" data-ga="G-RC7J6DP50Q"></script>
 <title>CodeOutbox — email marketing your agent sets up in one prompt</title>
 <meta name="description" content="Paste a form. No backend. Markdown broadcasts, your lists in your repo, run from your coding agent. Free for 100 subscribers." />
 <link rel="canonical" href="https://codeoutbox.com/" />
@@ -286,7 +277,7 @@
       <a class="muted" href="#faq">FAQ</a>
       <a class="muted" href="/docs.html">Docs</a>
       <a class="muted" href="https://github.com/Cellcote/CodeOutbox">GitHub</a>
-      <a class="btn btn-amber cta" href="https://app.codeoutbox.com">Get started</a>
+      <a class="btn btn-amber cta" href="https://app.codeoutbox.com" data-track="cta_click" data-track-location="nav">Get started</a>
     </div>
   </div>
 </nav>
@@ -297,7 +288,7 @@
       <h1>Email marketing your agent sets up in one prompt.</h1>
       <p class="lead"><b>Paste a form. No backend.</b> Your lists and campaigns live in your repo.</p>
       <div class="cta-row">
-        <a class="btn btn-amber" href="https://app.codeoutbox.com">Get started — free</a>
+        <a class="btn btn-amber" href="https://app.codeoutbox.com" data-track="cta_click" data-track-location="hero">Get started — free</a>
         <a class="docs" href="#how">read the docs ›</a>
       </div>
       <p class="nocc">No credit card required. Or skip signup: <code class="mono" style="color:#e6e6e6">npx codeoutbox</code></p>
@@ -623,6 +614,7 @@ Hey there, here's what shipped this week…
   // dogfood subscribe form: posts to the app (app.codeoutbox.com), inline states.
   // Works with no JS too (native POST → 303 to the app's /thanks).
   const sf = document.querySelector('.sub-form');
+  const sfLoaded = Date.now();
   if (sf) {
     const msg = sf.querySelector('.sub-msg');
     const btn = sf.querySelector('button');
@@ -631,15 +623,16 @@ Hey there, here's what shipped this week…
       msg.removeAttribute('data-ok'); msg.removeAttribute('data-err'); msg.textContent = '';
       btn.disabled = true;
       try {
-        const res = await fetch(sf.action, {
-          method: 'POST', headers: { Accept: 'application/json' }, body: new FormData(sf),
-        });
+        const body = new FormData(sf);
+        body.append('_e', String(Date.now() - sfLoaded)); // fill time: tells people from bots
+        const res = await fetch(sf.action, { method: 'POST', headers: { Accept: 'application/json' }, body });
         const data = await res.json().catch(() => ({}));
         if (res.ok && data.ok) {
           sf.reset();
           msg.setAttribute('data-ok', '');
           msg.textContent = data.status === 'confirmed'
             ? "You're subscribed 🎉" : 'Check your inbox to confirm ✉️';
+          window.coTrack('generate_lead', { method: 'launch_list' });
         } else {
           msg.setAttribute('data-err', '');
           msg.textContent = data.error || 'Something went wrong. Try again.';
@@ -650,17 +643,6 @@ Hey there, here's what shipped this week…
     });
   }
 </script>
-<!-- cookie consent -->
-<div id="co-consent" role="dialog" aria-label="Cookie consent" style="display:none;position:fixed;left:16px;right:16px;bottom:16px;max-width:680px;margin:0 auto;background:#0A0A0A;color:#fafafa;border:1px solid #333;border-radius:12px;padding:14px 18px;font-family:-apple-system,'Segoe UI',Roboto,sans-serif;font-size:14px;line-height:1.5;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;z-index:9999;box-shadow:0 8px 30px rgba(0,0,0,.4)">
-  <span>We use one analytics cookie to learn what's useful — nothing more. <a href="/privacy.html" style="color:#F59E0B">Privacy</a></span>
-  <span style="display:flex;gap:8px;flex-shrink:0">
-    <button onclick="coConsent('denied')" style="background:transparent;color:#ccc;border:1px solid #444;border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit">Decline</button>
-    <button onclick="coConsent('granted')" style="background:#F59E0B;color:#1a1200;border:0;border-radius:8px;padding:8px 14px;cursor:pointer;font:inherit;font-weight:600">Accept</button>
-  </span>
-</div>
-<script>
-  (function(){ var s; try{ s=localStorage.getItem('co_consent'); }catch(e){} if(!s){ var el=document.getElementById('co-consent'); if(el) el.style.display='flex'; } })();
-  function coConsent(v){ try{ localStorage.setItem('co_consent', v); }catch(e){} if(window.gtag) gtag('consent','update',{analytics_storage: v==='granted'?'granted':'denied'}); var el=document.getElementById('co-consent'); if(el) el.style.display='none'; }
-</script>
+
 </body>
 </html>

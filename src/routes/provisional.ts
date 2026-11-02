@@ -6,6 +6,7 @@
 import type { Context } from "hono";
 import { queryOne } from "../db";
 import { config } from "../config";
+import { track, clientOf } from "../metrics";
 import { signClaim } from "../tokens";
 import { sendSystemEmail } from "../sender";
 import { claimEmail } from "../email/templates";
@@ -17,7 +18,9 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export async function createProvisionalEndpoint(c: Context) {
   const body = await c.req.json().catch(() => ({}));
   try {
-    return c.json({ ok: true, ...(await createProvisional(body)) });
+    const list = await createProvisional(body);
+    track("provisional_created", null, { client: clientOf(c), with_email: !!body.email });
+    return c.json({ ok: true, ...list });
   } catch (err) {
     return c.json({ ok: false, error: String((err as Error).message) }, 400);
   }

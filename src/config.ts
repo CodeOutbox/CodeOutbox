@@ -18,6 +18,13 @@ export const config = {
   // data to someone else's property).
   analytics: { gaId: env.GA_MEASUREMENT_ID?.trim() || "" },
 
+  // Who may open /admin (the first-party funnel). Comma-separated account emails;
+  // unset = nobody.
+  adminEmails: (env.ADMIN_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean),
+
   // Optional webhook (Slack/Discord incoming webhook, or any relay) for runtime
   // errors. Unset = errors are logged only.
   errorWebhookUrl: env.ERROR_WEBHOOK_URL?.trim() || "",

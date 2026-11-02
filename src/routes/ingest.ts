@@ -11,6 +11,8 @@ import { cleanFields } from "../merge";
 import { gateUnclaimed } from "../provisional";
 import { sendOptIn } from "../optin";
 import { maskEmail } from "../mask";
+import { readSignals, checkSignup } from "../formguard";
+import { track } from "../metrics";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -27,6 +29,8 @@ interface Group {
 interface SubRow {
   id: number;
   status: string;
+  inserted: boolean;
+  optin_recent: boolean;
 }
 
 export async function ingest(c: Context) {
@@ -89,12 +93,27 @@ export async function ingest(c: Context) {
     }
   }
 
+  const existing = await queryOne<{ x: number }>(
+    `SELECT 1 AS x FROM subscribers WHERE group_id = $1 AND email = $2`,
+    [group.id, email],
+  );
+
+  // Bot protection for new addresses: a blocked submission looks like a normal
+  // success to the sender, but nothing is stored and no email goes out.
+  const signals = readSignals((h) => c.req.header(h), body);
+  if (!existing) {
+    const verdict = await checkSignup({ email, ip, groupId: group.id, signals });
+    if (!verdict.ok) {
+      track("form_blocked", group.owner_account_id ? Number(group.owner_account_id) : null, {
+        reason: verdict.reason,
+        client: signals.client,
+      });
+      return ok("pending", group.redirect);
+    }
+  }
+
   // Plan: subscriber cap. Only blocks NEW subscribers; existing ones keep working.
   if (group.owner_account_id) {
-    const existing = await queryOne<{ x: number }>(
-      `SELECT 1 AS x FROM subscribers WHERE group_id = $1 AND email = $2`,
-      [group.id, email],
-    );
     if (!existing) {
       const su = await subscriberUsage(group.owner_account_id);
       if (su.used >= su.limit) {
@@ -108,13 +127,14 @@ export async function ingest(c: Context) {
   // Upsert. On conflict we keep the existing status (so we don't downgrade a
   // confirmed subscriber back to pending).
   const sub = await queryOne<SubRow>(
-    `INSERT INTO subscribers (group_id, email, name, status, consent_ip, source, fields)
-     VALUES ($1, $2, $3, 'pending', $4, 'form', $5::jsonb)
+    `INSERT INTO subscribers (group_id, email, name, status, consent_ip, source, fields, signup_meta)
+     VALUES ($1, $2, $3, 'pending', $4, 'form', $5::jsonb, $6::jsonb)
      ON CONFLICT (group_id, email)
        DO UPDATE SET name = COALESCE(EXCLUDED.name, subscribers.name),
                      fields = subscribers.fields || EXCLUDED.fields
-     RETURNING id, status`,
-    [group.id, email, name, ip, JSON.stringify(fields)],
+     RETURNING id, status, (xmax = 0) AS inserted,
+               (optin_sent_at > now() - interval '24 hours') IS TRUE AS optin_recent`,
+    [group.id, email, name, ip, JSON.stringify(fields), JSON.stringify(signals)],
   );
   if (!sub) return c.json({ ok: false, error: "store failed" }, 500);
 
@@ -133,11 +153,12 @@ export async function ingest(c: Context) {
   // Already confirmed → don't resend the opt-in.
   if (sub.status === "confirmed") return ok("confirmed", group.redirect);
 
-  // Send (or re-send) the double-opt-in confirmation, in the list's name.
-  await sendOptIn(sub.id);
+  // Send the double-opt-in confirmation, in the list's name — but not again if one
+  // went out in the last day (repeat submissions are how list-bombing works).
+  if (!sub.optin_recent) await sendOptIn(sub.id);
 
-  // Nudge once more later if they never confirm (only for genuinely new pendings).
-  if (sub.status === "pending") await scheduleConfirmReminder(sub.id);
+  // Nudge once more later if they never confirm: genuinely new, trusted signups only.
+  if (sub.inserted && !signals.low_trust) await scheduleConfirmReminder(sub.id);
 
   return ok("pending", group.redirect);
 }

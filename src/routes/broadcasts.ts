@@ -6,6 +6,7 @@
 
 import type { Context } from "hono";
 import { getAccountId } from "../auth";
+import { track, clientOf } from "../metrics";
 import {
   previewBroadcast,
   sendBroadcast,
@@ -26,7 +27,9 @@ export async function testBroadcastEndpoint(c: Context) {
   if (!accountId) return c.json({ ok: false, error: "unauthorized" }, 401);
   const body = await c.req.json().catch(() => ({}));
   try {
-    return c.json({ ok: true, ...(await sendTest(String(body.source ?? ""), accountId)) });
+    const res = await sendTest(String(body.source ?? ""), accountId);
+    track("test_sent", accountId, { client: clientOf(c) });
+    return c.json({ ok: true, ...res });
   } catch (err) {
     return c.json({ ok: false, error: String((err as Error).message) }, 400);
   }

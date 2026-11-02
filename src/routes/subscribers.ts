@@ -20,6 +20,7 @@ import { subscriberUsage } from "../usage";
 import { cleanFields, type Fields } from "../merge";
 import { sendOptIn } from "../optin";
 import { csvToSubscribers } from "../csv";
+import { track, clientOf } from "../metrics";
 
 async function existsInList(listId: number, email: string): Promise<boolean> {
   const r = await queryOne<{ x: number }>(
@@ -202,6 +203,7 @@ export async function importCsvEndpoint(c: Context) {
     return c.json({ ok: false, error: `that file has ${mapped.rows.length} rows; the limit per import is ${MAX_CSV_ROWS}` }, 400);
   }
   const res = await importRows(list, accountId, mapped.rows, body.confirmed);
+  track("import_csv", accountId, { client: clientOf(c), added: res.added, confirmed: body.confirmed });
   return c.json({ ok: true, ...res, inactive: mapped.inactive, columns: mapped.columns });
 }
 

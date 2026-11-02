@@ -136,9 +136,9 @@ export function subscribeForm(list: PublicList, nonce: string): string {
     `<button type="submit">Subscribe</button>` +
     `<p class="msg" role="status" aria-live="polite"></p>` +
     `</form>` +
-    `<script nonce="${nonce}">document.querySelectorAll('form.sub').forEach(function(f){var m=f.querySelector('.msg'),b=f.querySelector('button');` +
+    `<script nonce="${nonce}">var t0=Date.now();document.querySelectorAll('form.sub').forEach(function(f){var m=f.querySelector('.msg'),b=f.querySelector('button');` +
     `f.addEventListener('submit',async function(e){e.preventDefault();m.removeAttribute('data-state');m.textContent='';b.disabled=true;` +
-    `try{var r=await fetch(f.action,{method:'POST',headers:{Accept:'application/json'},body:new FormData(f)});var d=await r.json().catch(function(){return{}});` +
+    `try{var r=await fetch(f.action,{method:'POST',headers:{Accept:'application/json'},body:(function(){var d=new FormData(f);d.append('_e',String(Date.now()-t0));return d})()});var d=await r.json().catch(function(){return{}});` +
     `if(r.ok&&d.ok){f.reset();m.textContent=d.status==='confirmed'?"You're subscribed 🎉":'Check your inbox to confirm ✉️'}` +
     `else{m.dataset.state='error';m.textContent=d.error||'Something went wrong. Try again.'}}` +
     `catch(_){m.dataset.state='error';m.textContent='Network error. Try again.'}finally{b.disabled=false}})})</script>`

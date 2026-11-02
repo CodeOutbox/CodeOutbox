@@ -1,6 +1,7 @@
 // CodeOutbox — walking skeleton entrypoint.
 // The one loop that matters: form submit → pending subscriber → confirm email → confirmed.
 
+import { readFileSync } from "node:fs";
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
 import { cors } from "hono/cors";
@@ -14,6 +15,7 @@ import { requestClaim, completeClaim } from "./routes/claim";
 import { createProvisionalEndpoint, claimStart, claimStartPost } from "./routes/provisional";
 import { listPage, issuePage, thanksPageRoute } from "./routes/public";
 import { onboardingEndpoint } from "./onboarding";
+import { adminPage } from "./routes/admin";
 import {
   dashboard,
   logout,
@@ -99,6 +101,7 @@ import {
 } from "./routes/automations";
 import { startPage } from "./pages";
 import { getAccountId } from "./auth";
+import { track } from "./metrics";
 import { registerJob, startWorker, ensureScheduled } from "./queue";
 import { runBroadcastJob } from "./broadcast";
 import { runWelcomeJob } from "./welcome";
@@ -134,8 +137,19 @@ app.onError((err, c) => {
 app.use("/f/*", cors({ origin: "*", allowMethods: ["POST", "OPTIONS"] }));
 
 app.get("/health", (c) => c.text("ok"));
+// The shared GA + consent script (the marketing site serves the same file).
+const gaJs = readFileSync(new URL("../site/ga.js", import.meta.url), "utf8");
+app.get("/ga.js", (c) => {
+  c.header("content-type", "text/javascript; charset=utf-8");
+  c.header("cache-control", "public, max-age=3600");
+  return c.body(gaJs);
+});
 // Front door: signed in → dashboard; otherwise the two ways to start.
-app.get("/", async (c) => ((await getAccountId(c)) ? c.redirect("/dashboard", 302) : c.html(startPage())));
+app.get("/", async (c) => {
+  if (await getAccountId(c)) return c.redirect("/dashboard", 302);
+  track("start_view");
+  return c.html(startPage());
+});
 app.get("/thanks", thanksPageRoute);
 
 app.post(
@@ -173,6 +187,7 @@ app.post(
   claimStartPost,
 );
 app.get("/dashboard", dashboard);
+app.get("/admin", adminPage);
 app.get("/dashboard/upgrade", upgradeRedirect);
 app.get("/dashboard/billing", portalRedirect);
 app.get("/dashboard/broadcasts/:id", broadcastDetailEndpoint);

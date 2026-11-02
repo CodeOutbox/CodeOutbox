@@ -27,6 +27,7 @@ async function api(path, method = "GET", body) {
     headers: {
       "content-type": "application/json",
       accept: "application/json",
+      "x-co-client": `codeoutbox-mcp/${VERSION}`,
       ...(token ? { authorization: `Bearer ${token}` } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,

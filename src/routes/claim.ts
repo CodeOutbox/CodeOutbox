@@ -9,6 +9,7 @@ import { signClaim, verifyClaim, signSession } from "../tokens";
 import { sendSystemEmail } from "../sender";
 import { claimEmail } from "../email/templates";
 import { config } from "../config";
+import { track } from "../metrics";
 import { claimSentPage, confirmErrorPage } from "../pages";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -79,6 +80,7 @@ export async function completeClaim(c: Context) {
   } catch {
     bound = await bind("slug || '-' || substr(md5(random()::text), 1, 4)");
   }
+  if (bound) track("provisional_claimed", Number(account.id));
   if (!bound) {
     const g = await queryOne<{ owner_account_id: number | null }>(
       `SELECT owner_account_id FROM groups WHERE id = $1`,

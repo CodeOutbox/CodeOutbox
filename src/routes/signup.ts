@@ -8,6 +8,7 @@ import { signLogin, verifyLogin, signSession } from "../tokens";
 import { sendSystemEmail } from "../sender";
 import { loginEmail } from "../email/templates";
 import { config } from "../config";
+import { track } from "../metrics";
 import {
   signupFormPage,
   signupSentPage,
@@ -37,6 +38,7 @@ export async function requestSignup(c: Context) {
 
   const token = await signLogin(email);
   await sendSystemEmail(loginEmail(email, `${config.baseUrl}/signup/${token}`));
+  track("signup_requested");
   return wantsJson ? c.json({ ok: true }) : c.html(signupSentPage(email));
 }
 
@@ -64,6 +66,7 @@ export async function completeSignup(c: Context) {
     path: "/",
     maxAge: SESSION_MAX_AGE,
   });
+  track(existing ? "signin" : "account_created", Number(account.id));
   // New account → welcome + first step; returning → straight to the dashboard.
   // (No API key minted per sign-in anymore; keys are created in Settings.)
   return existing ? c.redirect("/dashboard", 303) : c.html(welcomePage(email));

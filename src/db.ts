@@ -129,6 +129,21 @@ CREATE TABLE IF NOT EXISTS subscribers (
 -- custom fields (merge tags): {"company":"Acme","plan":"pro"}
 ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS fields JSONB NOT NULL DEFAULT '{}'::jsonb;
 
+-- bot protection: coarse signup signals (js, origin host, client, fill time) for tuning,
+-- and when the last opt-in email went out (no repeat opt-ins within a day)
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS signup_meta JSONB;
+ALTER TABLE subscribers ADD COLUMN IF NOT EXISTS optin_sent_at TIMESTAMPTZ;
+
+-- first-party funnel events (no cookies, no personal data): counts what GA can't see
+CREATE TABLE IF NOT EXISTS events (
+  id         BIGSERIAL PRIMARY KEY,
+  name       TEXT NOT NULL,
+  account_id BIGINT,
+  meta       JSONB NOT NULL DEFAULT '{}'::jsonb,
+  at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS events_name_at ON events (name, at);
+
 CREATE TABLE IF NOT EXISTS suppressions (
   id         BIGSERIAL PRIMARY KEY,
   account_id BIGINT NOT NULL REFERENCES accounts(id),

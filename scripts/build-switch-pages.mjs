@@ -128,6 +128,7 @@ function page({ title, description, path, body }) {
 <meta property="og:url" content="${url}" />
 <meta property="og:image" content="https://codeoutbox.com/og.png" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+<script src="/ga.js" data-ga="G-RC7J6DP50Q"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <style>${CSS}</style>
@@ -175,7 +176,7 @@ function toolPage(t) {
 <h2>5. Send from your own domain</h2>
 <p>Add your domain under Settings → Sending domains and publish the DNS records it shows. Your emails then come from your own address, which helps them reach the inbox. A short first note (“we've moved our newsletter”) helps readers recognize the new sender.</p>
 
-<p><a class="cta" href="https://app.codeoutbox.com">Start free</a></p>
+<p><a class="cta" href="https://app.codeoutbox.com" data-track="cta_click" data-track-location="switch_${t.slug}">Start free</a></p>
 
 <p class="legal">${esc(t.name)} is a trademark of its owner. CodeOutbox is not affiliated with, endorsed by or sponsored by ${esc(t.name)}. The export steps above were checked against ${esc(t.name)}'s help center in ${CHECKED} and may change.</p>
 `;
@@ -197,7 +198,7 @@ ${TOOLS.map((t) => `<a class="card" href="/switch/${t.slug}/"><b>From ${esc(t.na
 </div>
 <h2>From anywhere else</h2>
 <p>Any CSV with an email column works, including a spreadsheet export. Common headers like <code>Email Address</code>, <code>First Name</code> and <code>Status</code> are recognized, unsubscribed and bounced rows are left out, and other columns become merge fields. Import it under Lists → <b>Import subscribers</b>, or with <code>npx codeoutbox import &lt;list&gt; &lt;file.csv&gt; --confirmed</code>.</p>
-<p><a class="cta" href="https://app.codeoutbox.com">Start free</a></p>
+<p><a class="cta" href="https://app.codeoutbox.com" data-track="cta_click" data-track-location="switch_hub">Start free</a></p>
 <p class="legal">Product names are trademarks of their owners. CodeOutbox is not affiliated with, endorsed by or sponsored by any of them.</p>
 `;
   return page({
