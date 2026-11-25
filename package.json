@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Email marketing your coding agent sets up in one prompt \u2014 walking skeleton (ingest \u2192 confirm).",
+  "description": "Email marketing your coding agent sets up in one prompt — walking skeleton (ingest → confirm).",
   "bin": {
     "codeoutbox": "packages/codeoutbox/bin/codeoutbox.mjs"
   },
@@ -29,6 +29,7 @@
     "@types/node": "^22.10.2",
     "@types/nodemailer": "^6.4.17",
     "@types/pg": "^8.11.10",
+    "imapflow": "^2.10.0",
     "tsx": "^4.19.2",
     "typescript": "^5.7.2"
   }

@@ -18,7 +18,7 @@ const PROTOCOLS = ["2025-06-18", "2025-03-26", "2024-11-05"];
 
 const INSTRUCTIONS = `CodeOutbox runs newsletters for websites: a hosted signup form, double opt-in, and campaigns written in Markdown.
 Typical setup: create_group (or create_provisional_list with no account) → put the form on the site (run \`npx codeoutbox --id <public_id>\` in the project; it detects the framework and writes a component) → get_signup_page for a shareable page and README badge → write a campaign → preview_broadcast → send_test → send_broadcast with confirm=true.
-Campaign format: YAML frontmatter (subject, group, optional preheader, send_at, draft) followed by Markdown. Merge tags: {{first_name}}, {{name}}, {{email}}, any custom field, with fallbacks like {{first_name | "there"}}.
+Campaign format: YAML frontmatter (subject, group, optional preheader, send_at, draft, where) followed by Markdown. \`where\` sends to part of the list by custom field: \`where: plan=pro\`, \`lang=de|nl\`, \`plan!=free\`, \`beta\` (field set), \`!beta\` (not set); comma = all must match. Merge tags: {{first_name}}, {{name}}, {{email}}, any custom field, with fallbacks like {{first_name | "there"}}.
 Never send a broadcast without the user's explicit go-ahead: show them the preview (recipient count and warnings) first.`;
 
 async function api(path, method = "GET", body) {
@@ -139,7 +139,7 @@ const TOOLS = {
     ({ source }) => api("/v1/broadcasts/test", "POST", { source }),
   ],
   send_broadcast: [
-    "Send a campaign to every confirmed subscriber of its list. Without confirm=true it only returns a dry run. " +
+    "Send a campaign to every confirmed subscriber of its list (or those matching its `where`). Without confirm=true it only returns a dry run. " +
       "Only set confirm=true after the user has seen the preview and said to send. Re-sending identical content " +
       "never double-sends; `send_at` in the frontmatter schedules it.",
     obj({ source, confirm: { type: "boolean", description: "must be true to actually send" } }, ["source"]),

@@ -38,7 +38,16 @@ smtp_tls_security_level = may
 # (enable submission in master.cf with smtpd_sasl_auth_enable=yes,
 #  smtpd_relay_restrictions = permit_sasl_authenticated, reject)
 message_size_limit = 26214400
+# drop the app → MTA hop (it exposes the app host's IP, e.g. a residential line)
+header_checks = regexp:/etc/postfix/header_checks
 ```
+`/etc/postfix/header_checks` (the header arrives folded, so match whitespace explicitly;
+test with `postmap -h -q - regexp:/etc/postfix/header_checks < message.eml`):
+```
+/^Received:[[:space:]]+from[[:space:]].*[[:space:]]with[[:space:]]+ESMTPSA[[:space:]]/  IGNORE
+```
+DKIM doesn't sign `Received`, so stripping it leaves the app's signature intact.
+
 Create an app submission user (SASL, e.g. via Dovecot or saslauthd) → username/password for the app. The app does NOT need to be a Postfix admin — just an authenticated submitter.
 
 > The app submits **already DKIM-signed** mail, so do **not** add OpenDKIM (double-signing

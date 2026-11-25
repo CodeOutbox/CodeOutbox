@@ -121,7 +121,8 @@ function commentBody(results) {
     }
     const onMerge = r.draft
       ? "📝 draft — won't send"
-      : `sends to **${r.recipientCount}** subscriber${r.recipientCount === 1 ? "" : "s"}`;
+      : `sends to **${r.recipientCount}** subscriber${r.recipientCount === 1 ? "" : "s"}` +
+        (r.where ? ` of ${r.listCount} (where \`${r.where}\`)` : "");
     const link = r.previewUrl ? `[view email](${r.previewUrl})` : "";
     lines.push(`| \`${r.file}\` | ${esc(r.subject)} | \`${r.group}\` | ${onMerge} | ${link} |`);
   }
@@ -192,7 +193,7 @@ async function main() {
     try {
       if (mode === "preview") {
         const p = await co("/v1/broadcasts/preview", { source, share: true });
-        results.push({ file, ...pick(p, "subject", "group", "recipientCount", "warnings", "draft", "previewUrl") });
+        results.push({ file, ...pick(p, "subject", "group", "where", "listCount", "recipientCount", "warnings", "draft", "previewUrl") });
       } else if (isDraft(source)) {
         console.log(`📝 ${file}: draft — skipped`);
         results.push({ file, skipped: "draft" });
@@ -204,7 +205,7 @@ async function main() {
             ? `scheduled for ${s.scheduledFor} → ${s.recipientCount} recipient(s)`
             : `sent ${s.sent}, failed ${s.failed} (broadcast #${s.broadcastId})`;
         console.log(`✅ ${file}: ${what}`);
-        results.push({ file, ...pick(s, "broadcastId", "alreadySent", "scheduledFor", "sent", "failed", "recipientCount") });
+        results.push({ file, ...pick(s, "broadcastId", "alreadySent", "scheduledFor", "sent", "failed", "recipientCount", "where") });
       }
     } catch (err) {
       console.log(`::error file=${file}::${err.message}`);

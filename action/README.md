@@ -9,7 +9,8 @@ comments on it:
 > | `campaigns/oct.md` | October update | `newsletter` | sends to **1,204** subscribers | [view email](#) |
 
 Merge it and it sends. Sends are idempotent per content, so re-runs never double-send.
-Put `draft: true` in a campaign's frontmatter to merge it without sending.
+Put `draft: true` in a campaign's frontmatter to merge it without sending. A campaign with
+`where:` (send to part of a list) shows "sends to N of M (where …)" in the PR comment.
 
 ```yaml
 # .github/workflows/newsletter.yml

@@ -31,11 +31,14 @@ import {
   SAMPLE_VARS,
   SAMPLE_MISSING,
 } from "./merge";
+import { matchesWhere, formatWhere, type Condition } from "./segment";
 
 export interface PreviewResult {
   subject: string;
   group: string;
-  recipientCount: number;
+  where?: string; // the segment filter, when the campaign has one
+  listCount: number; // confirmed, non-suppressed subscribers on the whole list
+  recipientCount: number; // …of which match `where` (= listCount without one)
   warnings: string[];
   draft: boolean;
   html: string;
@@ -50,6 +53,7 @@ export interface SendResult {
   sent: number;
   failed: number;
   recipientCount: number;
+  where?: string;
 }
 
 interface OwnedGroup {
@@ -72,6 +76,9 @@ async function resolveOwnedGroup(
   }
   return group;
 }
+
+const segment = (rows: Recipient[], where: Condition[]) =>
+  where.length ? rows.filter((r) => matchesWhere(r.fields, where)) : rows;
 
 interface Recipient {
   id: number;
@@ -99,8 +106,10 @@ async function loadRecipients(
 }
 
 function contentHash(r: RenderedCampaign): string {
+  // The segment is part of the identity: the same body to another segment is a new send.
+  const where = r.meta.where.length ? `\nwhere:${formatWhere(r.meta.where)}` : "";
   return createHash("sha256")
-    .update(`${r.meta.subject}\n${r.meta.group}\n${r.bodyText}`)
+    .update(`${r.meta.subject}\n${r.meta.group}\n${r.bodyText}${where}`)
     .digest("hex");
 }
 
@@ -110,7 +119,9 @@ export async function previewBroadcast(
 ): Promise<PreviewResult> {
   const r = parseCampaign(source);
   const group = await resolveOwnedGroup(r.meta.group, accountId);
-  const recipients = await loadRecipients(group.id, accountId);
+  const everyone = await loadRecipients(group.id, accountId);
+  const recipients = segment(everyone, r.meta.where);
+  const where = r.meta.where.length ? formatWhere(r.meta.where) : undefined;
   const brand = await resolveBrand(accountId);
   const sample = composeMessage(
     personalize(r, SAMPLE_VARS, { missing: SAMPLE_MISSING }),
@@ -119,6 +130,12 @@ export async function previewBroadcast(
   );
 
   const warnings = lintCampaign(r);
+  if (where && !recipients.length) {
+    warnings.push(
+      `No subscriber matches where: ${where} (${everyone.length} confirmed on the list). ` +
+        `Check the field names: they're case-sensitive.`,
+    );
+  }
   for (const tag of tagsUsed(r)) {
     if (tag.hasFallback) continue;
     const missing = recipients.filter((x) => !mergeVars(x)[tag.key]).length;
@@ -159,6 +176,8 @@ export async function previewBroadcast(
   return {
     subject: sample.subject, // with sample merge data, like html
     group: r.meta.group,
+    where,
+    listCount: everyone.length,
     recipientCount: recipients.length,
     warnings,
     draft: !!r.meta.draft,
@@ -202,7 +221,10 @@ async function deliver(
   await query(`UPDATE broadcasts SET status = 'sending' WHERE id = $1`, [broadcastId]);
 
   const r = parseCampaign(source);
-  const recipients = await loadPendingRecipients(bc.group_id, bc.account_id, broadcastId);
+  const recipients = segment(
+    await loadPendingRecipients(bc.group_id, bc.account_id, broadcastId),
+    r.meta.where,
+  );
   const displayName =
     r.meta.from && !r.meta.from.includes("@") ? r.meta.from : undefined;
   const sender = await resolveSender(bc.account_id, displayName);
@@ -330,7 +352,11 @@ export async function sendBroadcast(
     };
   }
 
-  const recipients = await loadRecipients(group.id, accountId);
+  const recipients = segment(await loadRecipients(group.id, accountId), r.meta.where);
+  const where = r.meta.where.length ? formatWhere(r.meta.where) : undefined;
+  if (where && !recipients.length) {
+    throw new Error(`no subscriber matches where: ${where} — nothing to send`);
+  }
 
   // Hybrid sending identity: above the free-tier limit, require a verified domain.
   if (
@@ -377,6 +403,7 @@ export async function sendBroadcast(
       sent: 0,
       failed: 0,
       recipientCount: recipients.length,
+      where,
     };
   }
 
@@ -388,6 +415,7 @@ export async function sendBroadcast(
     sent: res.sent,
     failed: res.failed,
     recipientCount: recipients.length,
+    where,
   };
 }
 

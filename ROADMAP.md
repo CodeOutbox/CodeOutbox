@@ -18,6 +18,7 @@ Effort: S/M/L · 🏰 own-MTA deliverability moat · 🎯 dev/agent wedge · ✅
 - ✅ Automations: welcome email, confirmation reminder, drip sequences, API triggers, win-back, RSS → email
 - ✅ GitHub Action: PR comment with recipients/lint/rendered preview link, send on merge (`draft: true` to hold)
 - ✅ `npx codeoutbox` scaffolder: stack + Tailwind detection, writes the component (React/Next, Vue/Nuxt, Svelte, Astro, HTML)
+- ✅ Send to part of a list: `where:` in campaign frontmatter filters on custom fields (`plan=pro`, `lang=de|nl`, `beta`, `!beta`)
 - ✅ Merge tags + custom fields (`{{first_name | "there"}}`, form inputs → fields), missing-value lint
 - ✅ Subscriber import/export (`co subscribers`), Mailchimp/Kit/Substack CSVs as-is
 - ✅ Zero-signup start: `npx codeoutbox` creates a provisional list (claim link; first-subscriber claim email; 25 cap, 14-day expiry)
@@ -44,7 +45,7 @@ Effort: S/M/L · 🏰 own-MTA deliverability moat · 🎯 dev/agent wedge · ✅
 | Dedicated IP / pools | Deliverability 🏰 | Scale+/Max | M | Big-sender differentiator |
 | Reputation dashboard | Deliverability 🏰 | Growth+ | M | Visible trust (Postmaster/SNDS) |
 | Transactional email API | Automation 🎯 | Pro+ | M | One vendor for marketing + app mail |
-| Segments | Segmentation | Growth+ | M | Core ESP capability — now unblocked by custom fields |
+| Segments | Segmentation | Growth+ | M | Core ESP capability. 🚧 `where:` field filter on campaigns shipped; next: saved segments + dashboard UI |
 | Team seats + roles | Teams | Growth+ | M | Unlocks larger orgs |
 | Sub-accounts / workspaces | Teams | Scale+ | L | Highest ARPU; multi-site reality |
 | Migration assist (Mailchimp/Kit) | Support | Growth+ | S | CSV import shipped; add API pulls + a "switch from X" page |

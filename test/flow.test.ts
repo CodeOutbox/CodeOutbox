@@ -158,3 +158,50 @@ test("broadcast personalizes per recipient from name + custom fields", async () 
   assert.match(out, /News for Acme this week/);
   assert.match(out, /To:\s+m2@ex\.com\n\s+Subject: Hi friend/);
 });
+
+test("where: sends only to subscribers whose fields match, idempotent per segment", async () => {
+  const { previewBroadcast } = await import("../src/broadcast.ts");
+  await query(
+    `INSERT INTO subscribers (group_id, email, status, fields)
+     VALUES ($1, 'de1@ex.com', 'confirmed', '{"lang":"nl","w_04_de":"1","w_04_pl":"1"}'::jsonb),
+            ($1, 'pl1@ex.com', 'confirmed', '{"lang":"nl","w_04_pl":"1"}'::jsonb),
+            ($1, 'de2@ex.com', 'pending',   '{"w_04_de":"1"}'::jsonb)`,
+    [groupId],
+  );
+  const body = "Your edition is out now, enjoy reading.\n";
+  const de = `---\nsubject: Out now\ngroup: news\nwhere: w_04_de\n---\n${body}`;
+  const pl = `---\nsubject: Out now\ngroup: news\nwhere: w_04_pl\n---\n${body}`;
+
+  const p = await previewBroadcast(de, accountId);
+  assert.equal(p.where, "w_04_de");
+  assert.equal(p.recipientCount, 1, "only the confirmed subscriber who asked for DE");
+  assert.ok(p.listCount > p.recipientCount);
+
+  const r1 = await sendBroadcast(de, accountId);
+  assert.equal(r1.sent, 1);
+  assert.equal(r1.where, "w_04_de");
+  const to = await query<{ email: string }>(
+    `SELECT s.email FROM broadcast_recipients br JOIN subscribers s ON s.id = br.subscriber_id
+      WHERE br.broadcast_id = $1`,
+    [r1.broadcastId],
+  );
+  assert.deepEqual(to.map((x) => x.email), ["de1@ex.com"]);
+  assert.equal((await sendBroadcast(de, accountId)).alreadySent, true);
+
+  // Same subject + body to another segment is a separate send, not a duplicate.
+  const r2 = await sendBroadcast(pl, accountId);
+  assert.equal(r2.alreadySent, false);
+  assert.equal(r2.sent, 2, "both subscribers who asked for PL, incl. the one who also asked for DE");
+
+  const arch = await queryOne<{ in_archive: boolean }>("SELECT in_archive FROM broadcasts WHERE id = $1", [r1.broadcastId]);
+  assert.equal(arch!.in_archive, false, "segment mails stay off the public archive by default");
+});
+
+test("where: no match → preview warns, send refuses", async () => {
+  const { previewBroadcast } = await import("../src/broadcast.ts");
+  const src = "---\nsubject: Nobody\ngroup: news\nwhere: w_99_xx\n---\nNobody wants this one yet.\n";
+  const p = await previewBroadcast(src, accountId);
+  assert.equal(p.recipientCount, 0);
+  assert.ok(p.warnings.some((w) => /No subscriber matches where: w_99_xx/.test(w)));
+  await assert.rejects(() => sendBroadcast(src, accountId), /no subscriber matches/);
+});
