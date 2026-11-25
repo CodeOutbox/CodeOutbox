@@ -162,6 +162,32 @@ Sends go only to **confirmed, non-suppressed** subscribers. Every message gets a
 per-recipient unsubscribe link plus `List-Unsubscribe` / `List-Unsubscribe-Post`
 headers. Re-sending identical content is a no-op (content-hash idempotency).
 
+### Send to part of a list (`where:`)
+
+Add `where:` to the frontmatter to send only to subscribers whose custom fields match:
+
+```markdown
+---
+subject: The German edition is out 🎉
+group: waitlist
+where: w_04_de
+---
+```
+
+| `where:` | matches subscribers whose… |
+|---|---|
+| `plan=pro` | `plan` field is `pro` |
+| `lang=de\|nl` | `lang` is `de` or `nl` |
+| `plan!=free` | `plan` is anything but `free` (or not set) |
+| `beta` | `beta` field is set |
+| `!beta` | `beta` field is not set |
+| `lang=de, beta` | all conditions match (comma = and) |
+
+Values compare case-insensitively; field names are case-sensitive. The dry run shows
+`N of M recipient(s) … where …` and warns when nothing matches (a send with no match is
+refused). The same body to a different segment counts as a new send, so it isn't skipped by
+the no-double-send check. Segment mails stay off the public archive unless you add `archive: true`.
+
 ## API tokens
 
 The CLI and MCP authenticate with an API token (`CO_TOKEN`). Mint one with your

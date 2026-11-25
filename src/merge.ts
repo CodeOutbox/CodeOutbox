@@ -19,7 +19,7 @@ export interface MergeSubscriber {
   fields?: Record<string, unknown> | null;
 }
 
-const KEY_RE = /^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/;
+export const KEY_RE = /^[a-zA-Z][a-zA-Z0-9_-]{0,39}$/;
 const RESERVED = new Set(["email", "name", "status", "fields"]);
 const MAX_FIELDS = 25;
 const MAX_VALUE = 500;

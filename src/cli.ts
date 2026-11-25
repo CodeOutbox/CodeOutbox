@@ -868,11 +868,13 @@ async function main() {
 
   if (live && json.scheduledFor) {
     console.log(
-      `🗓️  scheduled broadcast #${json.broadcastId} for ${json.scheduledFor} — ${json.recipientCount} recipient(s)`,
+      `🗓️  scheduled broadcast #${json.broadcastId} for ${json.scheduledFor} — ${json.recipientCount} recipient(s)` +
+        (json.where ? ` where ${json.where}` : ""),
     );
   } else if (live && !json.alreadySent) {
     console.log(
-      `✅ sent ${json.sent} (failed ${json.failed}) — broadcast #${json.broadcastId}`,
+      `✅ sent ${json.sent} (failed ${json.failed}) — broadcast #${json.broadcastId}` +
+        (json.where ? ` (where ${json.where})` : ""),
     );
   } else if (live && json.alreadySent) {
     console.log(
@@ -880,7 +882,9 @@ async function main() {
     );
   } else {
     console.log(
-      `DRY RUN — "${json.subject}" → ${json.recipientCount} recipient(s) in "${json.group}"`,
+      json.where
+        ? `DRY RUN — "${json.subject}" → ${json.recipientCount} of ${json.listCount} recipient(s) in "${json.group}" where ${json.where}`
+        : `DRY RUN — "${json.subject}" → ${json.recipientCount} recipient(s) in "${json.group}"`,
     );
     if (json.warnings?.length) {
       console.log("⚠️  warnings:\n - " + json.warnings.join("\n - "));

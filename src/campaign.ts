@@ -6,6 +6,7 @@
 import { marked } from "marked";
 import type { Brand } from "./brand";
 import { emailShell, escapeHtml, escapeAttr } from "./email/shell";
+import { parseWhere, type Condition } from "./segment";
 
 export interface CampaignMeta {
   subject: string;
@@ -15,6 +16,7 @@ export interface CampaignMeta {
   sendAt?: string;
   draft?: boolean; // `draft: true` → previewable, never sendable
   archive: boolean; // `archive: false` → kept off the public archive
+  where: Condition[]; // `where: lang=de, w_04_de` → only subscribers whose fields match
 }
 
 export interface RenderedCampaign {
@@ -61,7 +63,10 @@ export function parseCampaign(source: string): RenderedCampaign {
     from: fm.from,
     sendAt: fm.send_at,
     draft: /^(true|yes)$/i.test(fm.draft ?? ""),
-    archive: !/^(false|no)$/i.test(fm.archive ?? ""),
+    // A segment mail isn't for the whole list, so it stays off the public archive
+    // unless the frontmatter says `archive: true`.
+    archive: fm.archive ? !/^(false|no)$/i.test(fm.archive) : !fm.where,
+    where: parseWhere(fm.where),
   };
 
   const bodyText = body.trim();
