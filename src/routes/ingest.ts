@@ -13,6 +13,7 @@ import { sendOptIn } from "../optin";
 import { maskEmail } from "../mask";
 import { readSignals, checkSignup } from "../formguard";
 import { track } from "../metrics";
+import { hardSuppressed, liftUnsubscribe } from "../suppression";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -138,6 +139,21 @@ export async function ingest(c: Context) {
   );
   if (!sub) return c.json({ ok: false, error: "store failed" }, 500);
 
+  // Left earlier (unsubscribed, bounced, complained). Someone who unsubscribed may come
+  // back: they go to pending with a fresh consent record and get a new opt-in. Bounced
+  // or complained addresses get the usual answer, but no mail.
+  if (sub.status !== "pending" && sub.status !== "confirmed") {
+    if (sub.status !== "unsubscribed" || (await hardSuppressed(group.owner_account_id, email))) {
+      return ok("pending", group.redirect);
+    }
+    await query(
+      `UPDATE subscribers SET status = 'pending', consent_timestamp = NULL, consent_ip = $2
+        WHERE id = $1 AND status = 'unsubscribed'`,
+      [sub.id, ip],
+    );
+    sub.status = "pending";
+  }
+
   // Single opt-in group: confirm immediately, no email.
   if (!group.double_opt_in) {
     await query(
@@ -145,6 +161,7 @@ export async function ingest(c: Context) {
        WHERE id = $1 AND status <> 'unsubscribed'`,
       [sub.id],
     );
+    await liftUnsubscribe(group.owner_account_id, email);
     await triggerWelcome(sub.id, group.id);
     await triggerSequence(sub.id, group.id);
     return ok("confirmed", group.redirect);
