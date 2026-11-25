@@ -9,6 +9,7 @@ import { emitEvent } from "../webhooks";
 import { triggerWelcome } from "../welcome";
 import { triggerSequence } from "../sequence";
 import { maybeNudgeClaim } from "../provisional";
+import { liftUnsubscribe } from "../suppression";
 
 export async function confirm(c: Context) {
   const token = c.req.param("token");
@@ -35,6 +36,8 @@ export async function confirm(c: Context) {
        FROM subscribers s JOIN groups g ON g.id = s.group_id WHERE s.id = $1`,
     [payload.sub],
   );
+  // A confirmed opt-in is a fresh yes: drop an earlier 'unsubscribe' suppression.
+  await liftUnsubscribe(meta?.owner_account_id ?? null, row.email);
   emitEvent(meta?.owner_account_id, "subscriber.confirmed", {
     email: row.email,
     group: meta?.slug,

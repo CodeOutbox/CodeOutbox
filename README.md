@@ -162,6 +162,11 @@ Sends go only to **confirmed, non-suppressed** subscribers. Every message gets a
 per-recipient unsubscribe link plus `List-Unsubscribe` / `List-Unsubscribe-Post`
 headers. Re-sending identical content is a no-op (content-hash idempotency).
 
+An unsubscribe suppresses the address for the whole account. If that person later signs up
+again through a form, they get a fresh opt-in email; confirming it brings them back and lifts
+the suppression (other lists they left stay unsubscribed). Bounced or complained addresses are
+never mailed again, not even an opt-in.
+
 ### Send to part of a list (`where:`)
 
 Add `where:` to the frontmatter to send only to subscribers whose custom fields match:
